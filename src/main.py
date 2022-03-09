@@ -160,8 +160,8 @@ def tv_rec(head, pols):
     qualified = len([p for p in parent_all if p[3] == 'ADJ']) > 0
 
 
-    pstrength = 0
-    pnegation = 1
+    pstrength = strength
+    pnegation = negation
     pvalue = evalue
     pdisjunction = 0
     pconjunction = 0
@@ -194,12 +194,12 @@ def tv_rec(head, pols):
         if pnegation == 1:
             pvalue = (psubordinate + pconjunction + pdisjunction + pvalue + pqualified) * (1+(strength/10))
         else:
-            pvalue = -(psubordinate + pconjunction + pdisjunction + pvalue + pqualified) / (1 + (strength / 10))
+            pvalue = -(psubordinate + pconjunction + pdisjunction + pvalue + pqualified) * (1- (strength / 10))
     else:
         if pnegation == 1:
             pvalue = pvalue * (1+(pstrength/10))
         else:
-             pvalue = -pvalue / (1+(pstrength/10))
+             pvalue = -pvalue * (1-(pstrength/10))
 
         pvalue = pvalue *(1 - abs(psubordinate)/10)
         pvalue = pvalue *(1 - abs(pqualified)/10)
@@ -215,10 +215,10 @@ def tv_rec(head, pols):
     else:
         type="Emotion"
 
-    if pvalue>0:
-        interval = math.ceil(pvalue + 1 / 2) + 4
+    if pvalue>=0:
+        interval = math.ceil((pvalue + 1) / 2) + 4
     else:
-        interval = math.ceil(pvalue - 1 / 2) + 4
+        interval = math.ceil((pvalue - 1) / 2) + 4
 
     if element in adjectives.keys() and not adjectives[element][1] == "":
         if interval > 7:
@@ -298,8 +298,8 @@ def tv_rec(head, pols):
     if len(json_element)>0:
         pjson_element_list = [json_element] + pjson_element_list
 
-    #print(element, pvalue, strength, negation,  disjunction, conjunction, subordinate, qualified,pjson_element_list)
-    return pvalue, strength, negation,  disjunction, conjunction, subordinate, qualified, element,\
+    #print(element, pvalue, pstrength, pnegation,  disjunction, conjunction, subordinate, qualified,pjson_element_list)
+    return pvalue, pstrength, pnegation,  disjunction, conjunction, subordinate, qualified, element,\
            pjson_element_list
 
 
@@ -333,7 +333,145 @@ def remove_accents(old):
 # MAIN PROGRAM
 ##################
 
-stweet=["la #vacuna de la tos ferina en mujeres embarazadas no aumenta el riesgo de #autismo en el bebé"]
+stweet=["La vacuna estropeada es mala y es peligrosa"]
+
+
+
+
+
+
+'''
+stweet = ["La vacuna es muy mala",
+"La vacuna  es mala y peligrosa",
+"La vacuna  no es mala",
+"Siempre la vacuna es muy mala y la gente es peligrosa",
+"La vacuna es peligrosa aunque sea buena",
+"Creo que la vacuna es mala",
+"Realmente quien diga que las vacunas son malas es un enfermo",
+"Las personas malas que se quejan de las vacunas son unos enfermos",
+"La vacuna es buena aunque esté estropeada",
+"La vacuna es muy mala aunque esté testeada",
+"La vacuna es muy mala y es peligrosa",
+"Siempre la vacuna es muy mala y la gente es muy peligrosa",
+"Las personas estropeadas son peligrosas",
+"La vacunas son buenas aunque peligrosas",
+"Queda muerte y tragedia",
+"Queda siempre morir y sufrir",
+"Es siempre morir y sufrir",
+"Es siempre morir o sufrir",
+"Es siempre muerte y tragedia",
+"Las vacunas no valen mucho",
+"Las vacunas verdes no sirven trágicamente y tristemente",
+"Esta vacuna nunca es mala",
+"Esta vacuna no es mala",
+"Esta vacuna estropeada no es muy mala",
+"No siempre es malo ponerse la vacuna",
+"Cuando las vacunas son muy malas la gente muere",
+"No es malo ponerse la vacuna",
+"La vacuna no es peligrosa",
+"La vacuna siempre es mala y es muy peligrosa",
+"Quizás la vacuna sea mala y peligrosa",
+"Quizás la vacuna estropeada es mala",
+"El final es morir",
+"La vacuna es buena o mala",
+"La vacuna estropeada es mala y es muy peligrosa",
+"No es malo ponerse la vacuna y la gente no es muy peligrosa",
+"La vacuna no es un fraude ni peligrosa",
+"La vacuna produce anticuerpos",
+"La vacuna evita graves enfermedades",
+"Casi todas las vacunas son malas",
+"Algunas vacunas son malas",
+"Todas las vacunas son malas",
+"Ninguna vacuna es mala",
+"Siempre las vacunas son malas",
+"Nunca las vacunas son malas",
+"Algunas personas mueren con la vacuna",
+"Es bueno y barato ponerse la vacuna y no es peligrosa",
+"No pensaba que fuese así de buena",
+"Realmente me preocupa la situación de la vacunación. Hay mucha gente muriendo",
+"Las vacunas tienen efectos secundarios peligrosos que aún no se conocen",
+"Los idiotas mueren con la vacuna",
+"esto no es sanitarismo, es terrorismo sanitario",
+"Las vacunas testadas no son malas",
+"Las vacunas no testadas son malas",
+"Las vacunas testeadas no son malas y las vacunas no testeadas son malas",
+"las vacunas baratas estropeadas son malas",
+"Siempre las vacunas son malas",
+"Las vacunas malas son de astrazeneca",
+"Las vacunas son siempre malas",
+"Las vacunas son malas aunque peligrosas",
+"Las vacunas son siempre muy peligrosas",
+"Las vacunas aumentan el peligro",
+"Las vacunas evitan el peligro",
+"La vacuna es siempre muy segura"]
+'''
+
+'''
+stweet = ["La vacuna es muy mala",
+"La vacuna  es mala y peligrosa",
+"Siempre la vacuna es muy mala y la gente es peligrosa",
+"La vacuna es peligrosa aunque sea buena",
+"Creo que la vacuna es mala",
+"Realmente quien diga que las vacunas son malas es un enfermo",
+"Las personas malas que se quejan de las vacunas son unos enfermos",
+"La vacuna es buena aunque esté estropeada",
+"La vacuna es muy mala aunque esté testeada",
+"La vacuna es muy mala y es peligrosa",
+"Siempre la vacuna es muy mala y la gente es muy peligrosa",
+"Las personas estropeadas son peligrosas",
+"La vacunas son buenas aunque peligrosas",
+"Queda muerte y tragedia",
+"Queda siempre morir y sufrir",
+"Es siempre morir y sufrir",
+"Es siempre morir o sufrir",
+"Es siempre muerte y tragedia",
+"Las vacunas no valen mucho",
+"Las vacunas verdes no sirven trágicamente y tristemente",
+"Esta vacuna nunca es mala",
+"Esta vacuna no es mala",
+"Esta vacuna estropeada no es muy mala",
+"No siempre es malo ponerse la vacuna",
+"Cuando las vacunas son muy malas la gente muere",
+"No es malo ponerse la vacuna",
+"La vacuna no es peligrosa",
+"La vacuna siempre es mala y es muy peligrosa",
+"Quizás la vacuna sea mala y peligrosa",
+"Quizás la vacuna estropeada es mala",
+"El final es morir",
+"La vacuna es buena o mala",
+"La vacuna estropeada es mala y es muy peligrosa",
+"No es malo ponerse la vacuna y la gente no es muy peligrosa",
+"La vacuna no es un fraude ni peligrosa",
+"La vacuna produce anticuerpos",
+"La vacuna evita graves enfermedades",
+"Casi todas las vacunas son malas",
+"Algunas vacunas son malas",
+"Todas las vacunas son malas",
+"Ninguna vacuna es mala",
+"Siempre las vacunas son malas",
+"Nunca las vacunas son malas",
+"Algunas personas mueren con la vacuna",
+"Es bueno y barato ponerse la vacuna y no es peligrosa",
+"No pensaba que fuese así de buena",
+"Realmente me preocupa la situación de la vacunación. Hay mucha gente muriendo",
+"Las vacunas tienen efectos secundarios peligrosos que aún no se conocen",
+"Los idiotas mueren con la vacuna",
+"esto no es sanitarismo, es terrorismo sanitario",
+"Las vacunas testadas no son malas",
+"Las vacunas no testadas son malas",
+"Las vacunas testeadas no son malas y las vacunas no testeadas son malas",
+"las vacunas baratas estropeadas son malas",
+"Siempre las vacunas son malas",
+"Las vacunas malas son de astrazeneca",
+"Las vacunas son siempre malas",
+"Las vacunas son malas aunque peligrosas",
+"Las vacunas son siempre muy peligrosas",
+"Las vacunas aumentan el peligro",
+"Las vacunas evitan el peligro",
+"La vacuna es siempre muy segura"]
+'''
+
+
 
 
 '''WEB
