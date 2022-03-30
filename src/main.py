@@ -1,8 +1,13 @@
 import math
+import sys
+
 import stanza
-import csv
 import re
+import csv
 from pandas.io import json
+
+# -*- coding: utf-8 -*-
+stanza.download('es')
 
 
 def process(nlp, text):
@@ -11,8 +16,8 @@ def process(nlp, text):
 
 def load_adjectives():
     d = {}
-    with open('newdata/adjective-grammar.csv', "r",encoding="ISO-8859-1") as infile:
-        reader = csv.reader(infile,delimiter = ';')
+    with open('newdata/adjective-grammar.csv', "r", encoding="ISO-8859-1") as infile:
+        reader = csv.reader(infile, delimiter=';')
         for line in reader:
             d[line[0]] = line[1:]
     return d
@@ -20,8 +25,8 @@ def load_adjectives():
 
 def load_adverbs():
     d = {}
-    with open('newdata/adverb-grammar.csv', "r",encoding="ISO-8859-1") as infile:
-        reader = csv.reader(infile,delimiter = ';')
+    with open('newdata/adverb-grammar.csv', "r", encoding="ISO-8859-1") as infile:
+        reader = csv.reader(infile, delimiter=';')
         for line in reader:
             d[line[0]] = line[1:]
     return d
@@ -29,8 +34,8 @@ def load_adverbs():
 
 def load_nouns():
     d = {}
-    with open('newdata/noun-grammar.csv', "r",encoding="ISO-8859-1") as infile:
-        reader = csv.reader(infile,delimiter = ';')
+    with open('newdata/noun-grammar.csv', "r", encoding="ISO-8859-1") as infile:
+        reader = csv.reader(infile, delimiter=';')
         for line in reader:
             d[line[0]] = line[1:]
     return d
@@ -38,8 +43,8 @@ def load_nouns():
 
 def load_verbs():
     d = {}
-    with open('newdata/verb-grammar.csv', "r",encoding="ISO-8859-1") as infile:
-        reader = csv.reader(infile,delimiter = ';')
+    with open('newdata/verb-grammar.csv', "r", encoding="ISO-8859-1") as infile:
+        reader = csv.reader(infile, delimiter=';')
         for line in reader:
             d[line[0]] = line[1:]
     return d
@@ -99,10 +104,13 @@ ontology = load_ontology()
 positive_hashtags = load_positives_hashtags()
 negative_hashtags = load_negatives_hashtags()
 
+
 def tv(pols):
     root = [p[0] for p in pols if p[1] == 0]
-    value, strength, negation, disjunction, conjunction, subordinate, qualified, element, json_element_list = tv_rec(root[0], pols)
-    return value,json_element_list
+    value, vemotions, strength, negation, disjunction, conjunction, subordinate, qualified, element, json_element_list = tv_rec(
+        root[0], pols)
+    return value, vemotions, json_element_list
+
 
 def tv_rec(head, pols):
     full = [p for p in pols if p[0] == head]
@@ -141,16 +149,16 @@ def tv_rec(head, pols):
     if element in negations:
         negation = -1
 
-    if element in adverbs.keys() and adverbs.get(element)[1]=="INTENSIFICACION":
+    if element in adverbs.keys() and adverbs.get(element)[1] == "INTENSIFICACION":
         strength = abs(int(adverbs.get(element)[0]))
 
-    if element in adverbs.keys() and adverbs.get(element)[1]=="DEBILITACION":
+    if element in adverbs.keys() and adverbs.get(element)[1] == "DEBILITACION":
         strength = -abs(int(adverbs.get(element)[0]))
 
-    if element in verbs.keys() and verbs.get(element)[1]=="INTENSIFICACION":
+    if element in verbs.keys() and verbs.get(element)[1] == "INTENSIFICACION":
         strength = abs(int(verbs.get(element)[0]))
 
-    if element in verbs.keys() and verbs.get(element)[1]=="DEBILITACION":
+    if element in verbs.keys() and verbs.get(element)[1] == "DEBILITACION":
         strength = -abs(int(verbs.get(element)[0]))
 
     parent_all = [p for p in pols if p[1] == head]
@@ -159,7 +167,7 @@ def tv_rec(head, pols):
     subordinate = len([p for p in parent_all if p[3] == 'SCONJ']) > 0
     qualified = len([p for p in parent_all if p[3] == 'ADJ']) > 0
 
-
+    pemotions = 0
     pstrength = strength
     pnegation = negation
     pvalue = evalue
@@ -173,7 +181,7 @@ def tv_rec(head, pols):
     for p in parent:
         pp = tv_rec(p, pols)
         if pp is not None:
-            ppvalue, ppstrength, ppnegation, ppdisjunction, ppconjunction, ppsubordinate, ppqualified, ppelement, \
+            ppvalue, ppemotions, ppstrength, ppnegation, ppdisjunction, ppconjunction, ppsubordinate, ppqualified, ppelement, \
             ppjson_element = pp
             pjson_element_list = pjson_element_list + ppjson_element
             if ppdisjunction:
@@ -184,38 +192,39 @@ def tv_rec(head, pols):
             elif ppsubordinate:
                 psubordinate = psubordinate + ppvalue
             elif ppqualified:
-                    pqualified = pqualified + ppvalue
+                pqualified = pqualified + ppvalue
             else:
                 pvalue = pvalue + ppvalue
                 pstrength = pstrength + ppstrength
                 pnegation = pnegation * ppnegation
+            pemotions = pemotions + ppemotions
 
     if verb_modifier:
         if pnegation == 1:
-            pvalue = (psubordinate + pconjunction + pdisjunction + pvalue + pqualified) * (1+(strength/10))
+            pvalue = (psubordinate + pconjunction + pdisjunction + pvalue + pqualified) * (1 + (strength / 10))
         else:
-            pvalue = -(psubordinate + pconjunction + pdisjunction + pvalue + pqualified) * (1- (strength / 10))
+            pvalue = -(psubordinate + pconjunction + pdisjunction + pvalue + pqualified) * (1 - (strength / 10))
     else:
         if pnegation == 1:
-            pvalue = pvalue * (1+(pstrength/10))
+            pvalue = pvalue * (1 + (pstrength / 10))
         else:
-             pvalue = -pvalue * (1-(pstrength/10))
+            pvalue = -pvalue * (1 - (pstrength / 10))
 
-        pvalue = pvalue *(1 - abs(psubordinate)/10)
-        pvalue = pvalue *(1 - abs(pqualified)/10)
+        pvalue = pvalue * (1 - abs(psubordinate) / 10)
+        pvalue = pvalue * (1 - abs(pqualified) / 10)
 
         if number_disjunctions > 0:
             pvalue = (pvalue + pdisjunction + pconjunction) / number_disjunctions
         else:
             pvalue = pvalue + pconjunction
 
-    json_element={}
-    if head_full==0:
-        type="Main_Emotion"
+    json_element = {}
+    if head_full == 0:
+        type = "Main_Emotion"
     else:
-        type="Emotion"
+        type = "Emotion"
 
-    if pvalue>=0:
+    if pvalue >= 0:
         interval = math.ceil((pvalue + 1) / 2) + 4
     else:
         interval = math.ceil((pvalue - 1) / 2) + 4
@@ -223,8 +232,9 @@ def tv_rec(head, pols):
     if element in adjectives.keys() and not adjectives[element][1] == "":
         if interval > 7:
             json_element["Emotion_Polarity"] = "positive"
-            json_element["word"]=element
-            json_element["polarity"]=pvalue
+            json_element["word"] = element
+            json_element["polarity"] = pvalue
+            pemotions = pemotions + pvalue
             json_element[type] = ontology.get(adjectives[element][1])[7]
 
         else:
@@ -232,24 +242,29 @@ def tv_rec(head, pols):
                 json_element["Emotion_Polarity"] = "negative"
                 json_element["word"] = element
                 json_element["polarity"] = pvalue
+                pemotions = pemotions + pvalue
                 json_element[type] = ontology.get(adjectives[element][1])[0]
 
             else:
                 if interval >= 4:
-                    json_element["Emotion_Polarity"]="positive"
+                    json_element["Emotion_Polarity"] = "positive"
                     json_element["word"] = element
                     json_element["polarity"] = pvalue
+                    pemotions = pemotions + pvalue
+                    json_element[type] = ontology.get(adjectives[element][1])[interval]
                 else:
                     json_element["Emotion_Polarity"] = "negative"
                     json_element["word"] = element
                     json_element["polarity"] = pvalue
-                json_element[type] = ontology.get(adjectives[element][1])[interval]
+                    pemotions = pemotions + pvalue
+                    json_element[type] = ontology.get(adjectives[element][1])[interval]
 
     if element in nouns.keys() and not nouns[element][1] == "":
         if interval > 7:
             json_element["Emotion_Polarity"] = "positive"
             json_element["word"] = element
             json_element["polarity"] = pvalue
+            pemotions = pemotions + pvalue
             json_element[type] = ontology.get(nouns[element][1])[7]
 
         else:
@@ -257,24 +272,30 @@ def tv_rec(head, pols):
                 json_element["Emotion_Polarity"] = "negative"
                 json_element["word"] = element
                 json_element["polarity"] = pvalue
+                pemotions = pemotions + pvalue
                 json_element[type] = ontology.get(nouns[element][1])[0]
 
             else:
                 if interval >= 4:
-                    json_element["Emotion_Polarity"]="positive"
+                    json_element["Emotion_Polarity"] = "positive"
                     json_element["word"] = element
                     json_element["polarity"] = pvalue
+                    pemotions = pemotions + pvalue
+                    json_element[type] = ontology.get(nouns[element][1])[interval]
+
                 else:
                     json_element["Emotion_Polarity"] = "negative"
                     json_element["word"] = element
                     json_element["polarity"] = pvalue
-                json_element[type] = ontology.get(nouns[element][1])[interval]
+                    pemotions = pemotions + pvalue
+                    json_element[type] = ontology.get(nouns[element][1])[interval]
 
     if element in verbs.keys() and not verbs[element][2] == "":
         if interval > 7:
             json_element["Emotion_Polarity"] = "positive"
             json_element["word"] = element
             json_element["polarity"] = pvalue
+            pemotions = pemotions + pvalue
             json_element[type] = ontology.get(verbs[element][2])[7]
 
         else:
@@ -282,24 +303,28 @@ def tv_rec(head, pols):
                 json_element["Emotion_Polarity"] = "negative"
                 json_element["word"] = element
                 json_element["polarity"] = pvalue
+                pemotions = pemotions + pvalue
                 json_element[type] = ontology.get(verbs[element][2])[0]
 
             else:
                 if interval >= 4:
-                    json_element["Emotion_Polarity"]="positive"
+                    json_element["Emotion_Polarity"] = "positive"
                     json_element["word"] = element
                     json_element["polarity"] = pvalue
+                    pemotions = pemotions + pvalue
+                    json_element[type] = ontology.get(verbs[element][2])[interval]
                 else:
                     json_element["Emotion_Polarity"] = "negative"
                     json_element["word"] = element
                     json_element["polarity"] = pvalue
-                json_element[type] = ontology.get(verbs[element][2])[interval]
+                    pemotions = pemotions + pvalue
+                    json_element[type] = ontology.get(verbs[element][2])[interval]
 
-    if len(json_element)>0:
+    if len(json_element) > 0:
         pjson_element_list = [json_element] + pjson_element_list
 
-    #print(element, pvalue, pstrength, pnegation,  disjunction, conjunction, subordinate, qualified,pjson_element_list)
-    return pvalue, pstrength, pnegation,  disjunction, conjunction, subordinate, qualified, element,\
+    # print(element, pvalue, pstrength, pnegation,  disjunction, conjunction, subordinate, qualified,pjson_element_list)
+    return pvalue, pemotions, pstrength, pnegation, disjunction, conjunction, subordinate, qualified, element, \
            pjson_element_list
 
 
@@ -310,11 +335,11 @@ def clean_tweet(tweet):
         return ""
     temp = tweet.lower()
     temp = re.sub("'", "", temp)
-    temp = re.sub("@[A-Za-z0-9_]+","", temp)
+    temp = re.sub("@[A-Za-z0-9_]+", "", temp)
     temp = re.sub(r'http\S+', '', temp)
     temp = re.sub('[()!?]', ' ', temp)
-    temp = re.sub('\[.*?\]',' ', temp)
-    temp = re.sub("[^a-z0-9]"," ", temp)
+    temp = re.sub('\[.*?\]', ' ', temp)
+    temp = re.sub("[^a-z0-9]", " ", temp)
     temp = temp.split()
     temp = " ".join(word for word in temp)
     return temp
@@ -329,152 +354,15 @@ def remove_accents(old):
     new = re.sub(r'[ùúûü]', 'u', new)
     return new
 
+
 ##################
 # MAIN PROGRAM
 ##################
 
-stweet=["La vacuna estropeada es mala y es peligrosa"]
 
 
 
 
-
-
-'''
-stweet = ["La vacuna es muy mala",
-"La vacuna  es mala y peligrosa",
-"La vacuna  no es mala",
-"Siempre la vacuna es muy mala y la gente es peligrosa",
-"La vacuna es peligrosa aunque sea buena",
-"Creo que la vacuna es mala",
-"Realmente quien diga que las vacunas son malas es un enfermo",
-"Las personas malas que se quejan de las vacunas son unos enfermos",
-"La vacuna es buena aunque esté estropeada",
-"La vacuna es muy mala aunque esté testeada",
-"La vacuna es muy mala y es peligrosa",
-"Siempre la vacuna es muy mala y la gente es muy peligrosa",
-"Las personas estropeadas son peligrosas",
-"La vacunas son buenas aunque peligrosas",
-"Queda muerte y tragedia",
-"Queda siempre morir y sufrir",
-"Es siempre morir y sufrir",
-"Es siempre morir o sufrir",
-"Es siempre muerte y tragedia",
-"Las vacunas no valen mucho",
-"Las vacunas verdes no sirven trágicamente y tristemente",
-"Esta vacuna nunca es mala",
-"Esta vacuna no es mala",
-"Esta vacuna estropeada no es muy mala",
-"No siempre es malo ponerse la vacuna",
-"Cuando las vacunas son muy malas la gente muere",
-"No es malo ponerse la vacuna",
-"La vacuna no es peligrosa",
-"La vacuna siempre es mala y es muy peligrosa",
-"Quizás la vacuna sea mala y peligrosa",
-"Quizás la vacuna estropeada es mala",
-"El final es morir",
-"La vacuna es buena o mala",
-"La vacuna estropeada es mala y es muy peligrosa",
-"No es malo ponerse la vacuna y la gente no es muy peligrosa",
-"La vacuna no es un fraude ni peligrosa",
-"La vacuna produce anticuerpos",
-"La vacuna evita graves enfermedades",
-"Casi todas las vacunas son malas",
-"Algunas vacunas son malas",
-"Todas las vacunas son malas",
-"Ninguna vacuna es mala",
-"Siempre las vacunas son malas",
-"Nunca las vacunas son malas",
-"Algunas personas mueren con la vacuna",
-"Es bueno y barato ponerse la vacuna y no es peligrosa",
-"No pensaba que fuese así de buena",
-"Realmente me preocupa la situación de la vacunación. Hay mucha gente muriendo",
-"Las vacunas tienen efectos secundarios peligrosos que aún no se conocen",
-"Los idiotas mueren con la vacuna",
-"esto no es sanitarismo, es terrorismo sanitario",
-"Las vacunas testadas no son malas",
-"Las vacunas no testadas son malas",
-"Las vacunas testeadas no son malas y las vacunas no testeadas son malas",
-"las vacunas baratas estropeadas son malas",
-"Siempre las vacunas son malas",
-"Las vacunas malas son de astrazeneca",
-"Las vacunas son siempre malas",
-"Las vacunas son malas aunque peligrosas",
-"Las vacunas son siempre muy peligrosas",
-"Las vacunas aumentan el peligro",
-"Las vacunas evitan el peligro",
-"La vacuna es siempre muy segura"]
-'''
-
-'''
-stweet = ["La vacuna es muy mala",
-"La vacuna  es mala y peligrosa",
-"Siempre la vacuna es muy mala y la gente es peligrosa",
-"La vacuna es peligrosa aunque sea buena",
-"Creo que la vacuna es mala",
-"Realmente quien diga que las vacunas son malas es un enfermo",
-"Las personas malas que se quejan de las vacunas son unos enfermos",
-"La vacuna es buena aunque esté estropeada",
-"La vacuna es muy mala aunque esté testeada",
-"La vacuna es muy mala y es peligrosa",
-"Siempre la vacuna es muy mala y la gente es muy peligrosa",
-"Las personas estropeadas son peligrosas",
-"La vacunas son buenas aunque peligrosas",
-"Queda muerte y tragedia",
-"Queda siempre morir y sufrir",
-"Es siempre morir y sufrir",
-"Es siempre morir o sufrir",
-"Es siempre muerte y tragedia",
-"Las vacunas no valen mucho",
-"Las vacunas verdes no sirven trágicamente y tristemente",
-"Esta vacuna nunca es mala",
-"Esta vacuna no es mala",
-"Esta vacuna estropeada no es muy mala",
-"No siempre es malo ponerse la vacuna",
-"Cuando las vacunas son muy malas la gente muere",
-"No es malo ponerse la vacuna",
-"La vacuna no es peligrosa",
-"La vacuna siempre es mala y es muy peligrosa",
-"Quizás la vacuna sea mala y peligrosa",
-"Quizás la vacuna estropeada es mala",
-"El final es morir",
-"La vacuna es buena o mala",
-"La vacuna estropeada es mala y es muy peligrosa",
-"No es malo ponerse la vacuna y la gente no es muy peligrosa",
-"La vacuna no es un fraude ni peligrosa",
-"La vacuna produce anticuerpos",
-"La vacuna evita graves enfermedades",
-"Casi todas las vacunas son malas",
-"Algunas vacunas son malas",
-"Todas las vacunas son malas",
-"Ninguna vacuna es mala",
-"Siempre las vacunas son malas",
-"Nunca las vacunas son malas",
-"Algunas personas mueren con la vacuna",
-"Es bueno y barato ponerse la vacuna y no es peligrosa",
-"No pensaba que fuese así de buena",
-"Realmente me preocupa la situación de la vacunación. Hay mucha gente muriendo",
-"Las vacunas tienen efectos secundarios peligrosos que aún no se conocen",
-"Los idiotas mueren con la vacuna",
-"esto no es sanitarismo, es terrorismo sanitario",
-"Las vacunas testadas no son malas",
-"Las vacunas no testadas son malas",
-"Las vacunas testeadas no son malas y las vacunas no testeadas son malas",
-"las vacunas baratas estropeadas son malas",
-"Siempre las vacunas son malas",
-"Las vacunas malas son de astrazeneca",
-"Las vacunas son siempre malas",
-"Las vacunas son malas aunque peligrosas",
-"Las vacunas son siempre muy peligrosas",
-"Las vacunas aumentan el peligro",
-"Las vacunas evitan el peligro",
-"La vacuna es siempre muy segura"]
-'''
-
-
-
-
-'''WEB
 file = sys.argv[1]
 
 import json
@@ -482,7 +370,7 @@ with open(file, 'r') as f:
   data = json.load(f)
 
 stweet = [i['text'] for i in data['data']]
-'''
+
 
 nlp = stanza.Pipeline(lang='es')
 json_tree = {}
@@ -495,22 +383,27 @@ for t in stweet:
     document = doc(nlp, t)
     id = id + 1
     json_element = {}
-    json_element["id"]=id
-    json_element["tweet"]=t
-    total = 0
+    json_element["id"] = id
+    json_element["tweet"] = t
+    total_polarity = 0
+    total_emotions = 0
+    json_emotion = {}
     for sent in document.sentences:
         pols = [(word.id, word.head, word.lemma, word.upos) for word in sent.words]
-        #print(pols)
-        total_partial,json_emotion = tv(pols)
-        total = total + total_partial
-    json_element['polarity']=total
-    json_element['Emotions']=json_emotion
+        # print(pols)
+        partial_polarity, partial_emotions, json_emotion = tv(pols)
+        total_polarity = total_polarity + partial_polarity
+        total_emotions = total_emotions + partial_emotions
+
+    json_element['polarity_text'] = total_polarity
+    json_element['polarity_emotions'] = total_emotions
+    if max(abs(total_polarity), abs(total_emotions)) == abs(total_polarity):
+        json_element['total_polarity'] = total_polarity
+    else:
+        json_element['total_polarity'] = total_emotions
+    json_element['Emotions'] = json_emotion
     json_list.append(json_element)
 
 json_tree = json.dumps(json_list)
 print(json_tree)
-open("out.json","w").write(json_tree)
-
-
-
-
+open("out.json", "w").write(json_tree)
